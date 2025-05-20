@@ -11,9 +11,15 @@ t, x = model.run_sim()
 t = np.asarray(t)
 x = np.asarray(x)
 
-# visualize results
+# visualize trajectory
 fig = go.Figure()
 scene.draw_court(fig)
 scene.plot_ball_trajectory(fig, x)
 scene.show_scene(fig)
 fig.show()
+
+# display ball bounce location
+assert len(model.x_impact) > 0, "ball did not bounce!"
+x_impact = np.asarray(model.x_impact)
+xf, yf, zf = x_impact[0, 0:3]
+scene.plot_impact_location((xf, yf), system_model.r)

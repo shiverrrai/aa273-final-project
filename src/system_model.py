@@ -36,6 +36,7 @@ def bounce(t, x):
     # return z-component of ball position
     return x[2]
 
+
 bounce.terminal = True
 bounce.direction = -1
 
@@ -52,6 +53,7 @@ class SystemModel:
         self.x0 = x0
         self.total_time = total_time
         self.dt = dt
+        self.x_impact = []
 
     def run_sim(self, bounces=2):
         '''
@@ -78,6 +80,8 @@ class SystemModel:
             if sol.status == 1:
                 # copy state vector when bounce occurred
                 x, y, z, vx, vy, vz = sol.y[:, -1]
+                # store ball impact location
+                self.x_impact.append(sol.y[:, -1])
 
                 # exit sim if ball has almost stopped
                 if abs(vz) < 0.1:

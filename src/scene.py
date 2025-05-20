@@ -1,5 +1,8 @@
 import plotly.graph_objects as go
 import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib.patches import Circle
+
 
 # plotting utilities for visualization purposes
 
@@ -49,4 +52,21 @@ def show_scene(fig):
         title='Ground Truth Tennis Ball Trajectory',
         margin=dict(l=0, r=0, b=0, t=30)
     )
+
+def plot_impact_location(loc, r):
+    x, y = loc
+    fig, ax = plt.subplots()
+    ax.set_aspect('equal')  # Ensure aspect ratio is 1:1 so circles look correct
+    circle = Circle((x, y), r, color='green', alpha=0.6,
+                    edgecolor='black')
+    ax.add_patch(circle)
+    padding = 0.1  # for visualization padding around the ball
+    ax.set_xlim(x - r - padding, x + r + padding)
+    ax.set_ylim(y - r - padding, y + r + padding)
+    ax.set_xlabel("X Position (m)")
+    ax.set_ylabel("Y Position (m)")
+    ax.set_title("Tennis Ball Impact Point")
+    plt.grid(True)
+    plt.show()
+
 
