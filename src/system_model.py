@@ -1,6 +1,6 @@
 import numpy as np
 import math
-import scipy
+import scipy.integrate
 
 # constants
 g = -9.81  # m/s2 (gravitational acceleration)

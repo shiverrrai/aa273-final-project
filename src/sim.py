@@ -16,7 +16,9 @@ fig = go.Figure()
 scene.draw_court(fig)
 scene.plot_ball_trajectory(fig, x)
 scene.show_scene(fig)
-fig.show()
+
+# Show the plot as popup window and suppress verbose output
+fig.show(renderer="browser");
 
 # display ball bounce location
 assert len(model.x_impact) > 0, "ball did not bounce!"
