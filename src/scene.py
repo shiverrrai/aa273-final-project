@@ -69,4 +69,76 @@ def plot_impact_location(loc, r):
     plt.grid(True)
     plt.show()
 
+def draw_camera_frustum(fig, cam, color, cam_name, near_plane=5, far_plane=25):
+    pos = cam.C.flatten()
+    R_inv = cam.R.T
+
+    # camera center (no legend)
+    fig.add_trace(go.Scatter3d(
+        x=[pos[0]], y=[pos[1]], z=[pos[2]],
+        mode='markers',
+        marker=dict(size=12, color=color, symbol='diamond'),
+        showlegend=False
+    ))
+
+    # frustum planes at near and far (no legend)
+    planes = []
+    for depth in (near_plane, far_plane):
+        w = depth * cam.image_size[0] / cam.f
+        h = depth * cam.image_size[1] / cam.f
+        corners_cam = np.array([
+            [-w/2, -h/2, -depth],
+            [ w/2, -h/2, -depth],
+            [ w/2,  h/2, -depth],
+            [-w/2,  h/2, -depth],
+        ])
+        plane_world = [(R_inv @ c.reshape(3,1) + cam.C).flatten() for c in corners_cam]
+        planes.append(np.array(plane_world))
+
+    # edges
+    for i in range(4):
+        # near→far
+        fig.add_trace(go.Scatter3d(
+            x=[planes[0][i,0], planes[1][i,0]],
+            y=[planes[0][i,1], planes[1][i,1]],
+            z=[planes[0][i,2], planes[1][i,2]],
+            mode='lines',
+            line=dict(color=color, width=2, dash='dot'),
+            showlegend=False
+        ))
+        # center→near
+        fig.add_trace(go.Scatter3d(
+            x=[pos[0], planes[0][i,0]],
+            y=[pos[1], planes[0][i,1]],
+            z=[pos[2], planes[0][i,2]],
+            mode='lines',
+            line=dict(color=color, width=2),
+            showlegend=False
+        ))
+
+    # outlines of near & far
+    for plane in planes:
+        loop = np.vstack([plane, plane[0]])
+        fig.add_trace(go.Scatter3d(
+            x=loop[:,0],
+            y=loop[:,1],
+            z=loop[:,2],
+            mode='lines',
+            line=dict(color=color, width=2),
+            showlegend=False
+        ))
+
+    # optical axis → “view direction”
+    mid = (near_plane + far_plane) / 2
+    end = (R_inv @ np.array([0, 0, -mid]).reshape(3,1) + cam.C).flatten()
+    fig.add_trace(go.Scatter3d(
+        x=[pos[0], end[0]],
+        y=[pos[1], end[1]],
+        z=[pos[2], end[2]],
+        mode='lines',
+        line=dict(color=color, width=4),
+        name=f"{cam_name} view direction",
+        showlegend=True
+    ))
+
 
