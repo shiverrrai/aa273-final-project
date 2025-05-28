@@ -210,3 +210,44 @@ class PinholeCamera:
 
         return H, is_visible
 
+
+# Function to extract measurements for estimation algorithms
+def get_camera_measurements(cameras, trajectory, noise_std=1.0):
+    """
+    Generate camera measurements with noise for use in estimation algorithms.
+
+    Args:
+        cameras: List of PinholeCamera objects
+        trajectory: Nx3 array of trajectory positions
+        noise_std: Standard deviation of measurement noise in pixels
+
+    Returns:
+        measurements: List of measurement arrays per camera
+        visibilities: List of boolean arrays indicating visible points
+    """
+    all_measurements = []
+    all_visibilities = []
+
+    for cam in cameras:
+        camera_measurements = []
+        camera_visibilities = []
+
+        for point in trajectory:
+            # Extract position coordinates if needed
+            world_coords = point[:3] if len(point) > 3 else point
+            pixel, visible = cam.g(world_coords)
+
+            if visible:
+                # Add Gaussian noise to measurements
+                noisy_pixel = pixel + np.random.normal(0, noise_std, size=2)
+                camera_measurements.append(noisy_pixel)
+            else:
+                # For invisible points, add NaN values
+                camera_measurements.append(np.array([np.nan, np.nan]))
+
+            camera_visibilities.append(visible)
+
+        all_measurements.append(np.array(camera_measurements))
+        all_visibilities.append(np.array(camera_visibilities))
+
+    return np.asarray(all_measurements), np.asarray(all_visibilities)

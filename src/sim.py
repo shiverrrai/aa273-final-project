@@ -2,26 +2,56 @@ import numpy as np
 import system_model
 import plotly.graph_objects as go
 import scene
+import constants as consts
+from ekf import EKF
+import sensor_model
 
+
+# GROUND TRUTH MODEL SETUP
 x0 = np.array([0, 0, 1.0, 20.0, 0.0, 5.0])
-sim_time = 10
-model = system_model.SystemModel(x0, sim_time, 0.1)
+run_time = 10
+dt = 0.01
+model = system_model.SystemModel(x0, run_time, dt)
+
+# CAMERA MODEL SETUP
+camera_params = {
+    'distance': 50,  # Meters from court centerline
+    'elevation': 4,  # Meters above ground
+    'focal_length': 1000,  # Pixels (higher = more zoom, narrower FOV)
+    'image_size': (1280, 960),  # image size in pixels
+}
+camera1 = sensor_model.PinholeCamera(
+    position=[consts.court_length / 2, -camera_params['distance'],
+              camera_params['elevation']],
+    rotation_angles=[-np.pi / 2, 0, 0],  # Roll (x), pitch (y), yaw (z)
+    focal_length=camera_params['focal_length'],
+    image_size=camera_params['image_size'],
+)
+camera2 = sensor_model.PinholeCamera(
+    position=[consts.court_length / 2, camera_params['distance'],
+              camera_params['elevation']],
+    rotation_angles=[np.pi / 2, 0, 0],  # Roll (x), pitch (y), yaw (z)
+    focal_length=camera_params['focal_length'],
+    image_size=camera_params['image_size'],
+)
+cameras = [camera1, camera2]
+
+# ESTIMATION ALGORITHM SETUP
+mu = np.zeros(6)
+sigma = np.eye(6)
+Q = 0.1 * np.eye(6)
+R = np.eye(2 * len(cameras))
+ekf = EKF(mu, sigma, Q, R, dt)
+
+# RUN SIM
 t, x = model.run_sim()
+y, _ = sensor_model.get_camera_measurements(cameras, x)
+x_est, sigma = ekf.run(cameras, y)
 
-t = np.asarray(t)
-x = np.asarray(x)
-
-# visualize trajectory
+# PLOT RESULTS
 fig = go.Figure()
 scene.draw_court(fig)
-scene.plot_ball_trajectory(fig, x)
+scene.plot_ball_trajectory(fig, x_est)
 scene.show_scene(fig)
 
-# Show the plot as popup window and suppress verbose output
-fig.show(renderer="browser");
-
-# display ball bounce location
-assert len(model.x_impact) > 0, "ball did not bounce!"
-x_impact = np.asarray(model.x_impact)
-xf, yf, zf = x_impact[0, 0:3]
-scene.plot_impact_location((xf, yf), system_model.r)
+fig.show(renderer="browser")
