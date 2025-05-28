@@ -15,7 +15,7 @@ model = system_model.SystemModel(x0, run_time, dt)
 
 # CAMERA MODEL SETUP
 camera_params = {
-    'distance': 50,  # Meters from court centerline
+    'distance': 25,  # Meters from court centerline
     'elevation': 4,  # Meters above ground
     'focal_length': 1000,  # Pixels (higher = more zoom, narrower FOV)
     'image_size': (1280, 960),  # image size in pixels
@@ -51,7 +51,14 @@ x_est, sigma = ekf.run(cameras, y)
 # PLOT RESULTS
 fig = go.Figure()
 scene.draw_court(fig)
-scene.plot_ball_trajectory(fig, x_est)
+scene.plot_ball_trajectory(fig, x, "Ground Truth", "green")
+scene.plot_ball_trajectory(fig, x_est, "EKF Estimate", "yellowgreen")
+colors = ['red', 'blue']
+for i, cam in enumerate(cameras):
+    scene.draw_camera_frustum(
+        fig, cam, colors[i], f"Camera {i+1}",
+        near_plane=5, far_plane=20
+    )
 scene.show_scene(fig)
 
 fig.show(renderer="browser")
