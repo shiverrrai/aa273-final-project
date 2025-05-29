@@ -1,14 +1,7 @@
 import numpy as np
 import math
-import scipy
-
-# constants
-g = -9.81  # m/s2 (gravitational acceleration)
-r = 0.032  # m (tennis ball radius)
-m = 0.058  # kg (tennis ball mass)
-Cd = 0.53  # (tennis ball drag coefficient)
-rho = 1.293  # kg/m3 (density of air)
-e = 0.73  # coefficient of restitution
+import scipy.integrate
+import constants as consts
 
 
 def dynamics(t, x):
@@ -19,10 +12,10 @@ def dynamics(t, x):
     rx, ry, rz, vx, vy, vz = x
     v = np.array([vx, vy, vz])
     speed = np.linalg.norm(v)
-    F_gravity = np.array([0, 0, m * g])
-    F_drag = -0.5 * rho * Cd * (
-            math.pi * math.pow(r, 2)) * speed * v
-    a = (F_gravity + F_drag) / m
+    F_gravity = np.array([0, 0, consts.m * consts.g])
+    F_drag = -0.5 * consts.rho * consts.Cd * (
+            math.pi * math.pow(consts.r, 2)) * speed * v
+    a = (F_gravity + F_drag) / consts.m
     dxdt = np.array([vx, vy, vz, a[0], a[1], a[2]])
     return dxdt
 
@@ -88,7 +81,7 @@ class SystemModel:
                     break
 
                 # model restitution due to impact and change sign of vz
-                vz = -e * vz
+                vz = -consts.e * vz
 
                 # update initial conditions for next iteration\
                 # small z offset to avoid event loop
@@ -100,4 +93,4 @@ class SystemModel:
             else:
                 break
 
-        return t_hist, x_hist
+        return np.asarray(t_hist), np.asarray(x_hist)
