@@ -49,52 +49,41 @@ def draw_camera_frustum(fig, cam, color, cam_name, near_plane=5, far_plane=25):
         showlegend=False
     ))
 
-    # frustum planes at near and far (no legend)
-    planes = []
-    for depth in (near_plane, far_plane):
-        w = depth * cam.image_size[0] / cam.f
-        h = depth * cam.image_size[1] / cam.f
-        corners_cam = np.array([
-            [-w/2, -h/2, -depth],
-            [ w/2, -h/2, -depth],
-            [ w/2,  h/2, -depth],
-            [-w/2,  h/2, -depth],
-        ])
-        plane_world = [(R_inv @ c.reshape(3,1) + cam.C).flatten() for c in corners_cam]
-        planes.append(np.array(plane_world))
+    # frustum plane at near distance only
+    w = near_plane * cam.image_size[0] / cam.f
+    h = near_plane * cam.image_size[1] / cam.f
+    corners_cam = np.array([
+        [-w/2, -h/2, -near_plane],
+        [ w/2, -h/2, -near_plane],
+        [ w/2,  h/2, -near_plane],
+        [-w/2,  h/2, -near_plane],
+    ])
+    near_plane_world = [
+        (R_inv @ c.reshape(3,1) + cam.C).flatten() for c in corners_cam
+    ]
+    near_plane_world = np.array(near_plane_world)
 
-    # edges
+    # center→near lines (the frustum edges)
     for i in range(4):
-        # near→far
         fig.add_trace(go.Scatter3d(
-            x=[planes[0][i,0], planes[1][i,0]],
-            y=[planes[0][i,1], planes[1][i,1]],
-            z=[planes[0][i,2], planes[1][i,2]],
-            mode='lines',
-            line=dict(color=color, width=2, dash='dot'),
-            showlegend=False
-        ))
-        # center→near
-        fig.add_trace(go.Scatter3d(
-            x=[pos[0], planes[0][i,0]],
-            y=[pos[1], planes[0][i,1]],
-            z=[pos[2], planes[0][i,2]],
+            x=[pos[0], near_plane_world[i,0]],
+            y=[pos[1], near_plane_world[i,1]],
+            z=[pos[2], near_plane_world[i,2]],
             mode='lines',
             line=dict(color=color, width=2),
             showlegend=False
         ))
 
-    # outlines of near & far
-    for plane in planes:
-        loop = np.vstack([plane, plane[0]])
-        fig.add_trace(go.Scatter3d(
-            x=loop[:,0],
-            y=loop[:,1],
-            z=loop[:,2],
-            mode='lines',
-            line=dict(color=color, width=2),
-            showlegend=False
-        ))
+    # outline of near plane
+    loop = np.vstack([near_plane_world, near_plane_world[0]])
+    fig.add_trace(go.Scatter3d(
+        x=loop[:,0],
+        y=loop[:,1],
+        z=loop[:,2],
+        mode='lines',
+        line=dict(color=color, width=2),
+        showlegend=False
+    ))
 
     # optical axis → “view direction”
     mid = (near_plane + far_plane) / 2
@@ -108,6 +97,90 @@ def draw_camera_frustum(fig, cam, color, cam_name, near_plane=5, far_plane=25):
         name=f"{cam_name} view direction",
         showlegend=True
     ))
+
+def generate_camera_views(cameras, positions, model_impacts=None):
+    """
+    Generate and display camera views showing the projected ball trajectory.
+    
+    Args:
+        cameras (list): List of PinholeCamera objects to generate views for
+        positions (ndarray): Nx3 array of ball positions in world coordinates
+        model_impacts (list, optional): List of impact states for bounce visualization
+    
+    Returns:
+        None: Displays matplotlib figures for each camera view
+    """
+    print("\nGenerating camera views...")
+    
+    for i, cam in enumerate(cameras):
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Set up image coordinates
+        ax.set_xlim(0, cam.image_size[0])
+        ax.set_ylim(cam.image_size[1], 0)  # Inverted y-axis for image coordinates
+        ax.set_facecolor('darkgreen')
+        
+        # Add court reference lines
+        ax.axhline(y=cam.image_size[1]//2, color='white', linewidth=2, alpha=0.4)
+        ax.axvline(x=cam.image_size[0]//2, color='white', linewidth=2, alpha=0.4)
+        
+        # Plot trajectory points that are visible
+        visible_pixels = []
+        visible_indices = []
+        
+        for j, point in enumerate(positions):
+            world_coords = point[:3] if len(point) > 3 else point
+            pixel, visible = cam.g(world_coords)
+            if visible:
+                visible_pixels.append(pixel)
+                visible_indices.append(j)
+        
+        if visible_pixels:
+            visible_pixels = np.array(visible_pixels)
+            
+            # Plot trajectory path
+            ax.plot(visible_pixels[:, 0], visible_pixels[:, 1], 
+                  'yellow', linewidth=3, alpha=0.7, label='Ball trajectory')
+            
+            # Mark key points: start and end of visible trajectory
+            ax.scatter(visible_pixels[0, 0], visible_pixels[0, 1], 
+                      c='lime', s=150, marker='^', edgecolors='black', linewidth=2, 
+                      label='Start', zorder=10)
+            
+            if len(visible_pixels) > 1:
+                ax.scatter(visible_pixels[-1, 0], visible_pixels[-1, 1], 
+                          c='red', s=150, marker='v', edgecolors='black', linewidth=2,
+                          label='End', zorder=10)
+        
+        # Mark bounce points if visible
+        if model_impacts is not None:
+            for bounce_idx, bounce_point in enumerate(model_impacts):
+                bounce_pixel, bounce_visible = cam.g(bounce_point[:3])
+                if bounce_visible:
+                    ax.scatter(bounce_pixel[0], bounce_pixel[1], 
+                              c='orange', s=200, marker='X', edgecolors='black', linewidth=2,
+                              label=f'Bounce {bounce_idx+1}', zorder=10)
+        
+        # Calculate coverage statistics
+        coverage = 100 * len(visible_pixels) / len(positions) if len(positions) > 0 else 0
+        
+        # Add title and labels
+        ax.set_title(f'Camera {i+1} View - {coverage:.1f}% Coverage', fontsize=14, fontweight='bold')
+        ax.set_xlabel('Pixel U', fontsize=12)
+        ax.set_ylabel('Pixel V', fontsize=12)
+        ax.grid(True, alpha=0.3)
+        
+        # Add legend and coverage info
+        ax.legend(loc='upper right', framealpha=0.9)
+        coverage_text = f'Visible: {len(visible_pixels)}/{len(positions)} points'
+        ax.text(0.02, 0.98, coverage_text, transform=ax.transAxes, 
+               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
+               verticalalignment='top', fontsize=10)
+        
+        plt.tight_layout()
+        plt.show()
+    
+    print("Camera views generated!")
 
 def show_scene(fig):
     fig.update_layout(

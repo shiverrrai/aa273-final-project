@@ -8,7 +8,7 @@ import system_model
 import scene
 
 
-# Clean Pinhole Camera Implementation
+# Pinhole Camera Implementation
 class PinholeCamera:
     """
     Pinhole camera model with rotation for camera measurements.
@@ -42,10 +42,10 @@ class PinholeCamera:
 
         Args:
             position (list): [x, y, z] camera center in world coordinates
-            rotation_angles (list): [roll, pitch, yaw] in radians
+            rotation_angles (list): [roll, pitch, yaw] in radians. (rotating camera in fixed world frame)
                 - roll: rotation around X-axis
-                - pitch: rotation around Y-axis (positive looks up, negative looks down)
-                - yaw: rotation around Z-axis (0 points along +Y, π/2 points along +X)
+                - pitch: rotation around Y-axis 
+                - yaw: rotation around Z-axis 
             focal_length (float): Camera focal length in pixels
                 - Controls zoom/FOV (higher values = more zoom, narrower FOV)
             image_size (tuple): (width, height) in pixels
@@ -56,29 +56,30 @@ class PinholeCamera:
         self.u0, self.v0 = image_size[0] / 2, image_size[
             1] / 2  # Principal point
 
-        # Build rotation matrix from Euler angles (ZYX convention)
+        # Build rotation matrix from Euler angles
         roll, pitch, yaw = rotation_angles
 
         # Individual rotation matrices
         Rx = np.array([  # Roll (around X)
             [1, 0, 0],
-            [0, np.cos(roll), -np.sin(roll)],
-            [0, np.sin(roll), np.cos(roll)]
+            [0, np.cos(-roll), -np.sin(-roll)],
+            [0, np.sin(-roll), np.cos(-roll)]
         ])
 
         Ry = np.array([  # Pitch (around Y)
-            [np.cos(pitch), 0, np.sin(pitch)],
+            [np.cos(-pitch), 0, np.sin(-pitch)],
             [0, 1, 0],
-            [-np.sin(pitch), 0, np.cos(pitch)]
+            [-np.sin(-pitch), 0, np.cos(-pitch)]
         ])
 
         Rz = np.array([  # Yaw (around Z)
-            [np.cos(yaw), -np.sin(yaw), 0],
-            [np.sin(yaw), np.cos(yaw), 0],
+            [np.cos(-yaw), -np.sin(-yaw), 0],
+            [np.sin(-yaw), np.cos(-yaw), 0],
             [0, 0, 1]
         ])
 
-        # Combined rotation matrix (ZYX order: first yaw, then pitch, then roll)
+        # Combined rotation matrix
+        # Note: visualize as rotating camera in fixed world frame
         self.R = Rz @ Ry @ Rx
 
     def world_to_camera(self, world_coords):
@@ -131,8 +132,14 @@ class PinholeCamera:
 
         # Perspective projection (note the negative z)
         # Since camera looks along -Z, we use -z_cam in denominator
-        u = self.f * x_cam / (-z_cam) + self.u0
-        v = self.f * y_cam / (-z_cam) + self.v0
+        # Add a small epsilon to avoid division by zero
+        epsilon = 1e-10
+        if abs(z_cam) < epsilon:
+            # Point is essentially at the camera center, can't project meaningfully
+            u, v = float('inf'), float('inf')
+        else:
+            u = self.f * x_cam / (-z_cam) + self.u0
+            v = self.f * y_cam / (-z_cam) + self.v0
 
         return np.array([u, v])
 

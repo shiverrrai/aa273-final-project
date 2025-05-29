@@ -28,14 +28,14 @@ camera_params = {
 camera1 = sensor_model.PinholeCamera(
     position=[consts.court_length / 2, -camera_params['distance'],
               camera_params['elevation']],
-    rotation_angles=[-np.pi / 2, 0, 0],  # Roll (x), pitch (y), yaw (z)
+    rotation_angles=[np.pi / 2, 0, 0],  # Roll (x), pitch (y), yaw (z)
     focal_length=camera_params['focal_length'],
     image_size=camera_params['image_size'],
 )
 camera2 = sensor_model.PinholeCamera(
     position=[consts.court_length / 2, camera_params['distance'],
               camera_params['elevation']],
-    rotation_angles=[np.pi / 2, 0, 0],  # Roll (x), pitch (y), yaw (z)
+    rotation_angles=[-np.pi / 2, 0, 0],  # Roll (x), pitch (y), yaw (z)
     focal_length=camera_params['focal_length'],
     image_size=camera_params['image_size'],
 )
