@@ -117,8 +117,6 @@ def show_scene(fig):
             zaxis_title='Z (height, m)',
             aspectmode='manual',
             aspectratio=dict(x=2, y=1, z=0.5),
-            xaxis=dict(range=[-5,30],),
-            yaxis=dict(range=[-30,30],),
         ),
         title='Tennis Ball Trajectory Results',
         margin=dict(l=0, r=0, b=0, t=30),

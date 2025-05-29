@@ -2,6 +2,24 @@ import numpy as np
 import constants as consts
 
 
+def bundle_visible_measurements(cameras, y, visiblity):
+    """
+    Bundles the visible (non-Nan) measurements received at a given time step.
+    :param cameras: list of PinholeCamera objects (length m)
+    :param y: (mx2) ndarray of measurements
+    :param visiblity: (mx1) ndarray of bools representing whether
+    measurements are visible
+    :return:
+    """
+    valid_cameras = []
+    visible_measurements = []
+    for i in range(len(cameras)):
+        if visiblity[i]:
+            visible_measurements.append(y[i, :])
+            valid_cameras.append(cameras[i])
+    return valid_cameras, np.asarray(visible_measurements)
+
+
 class EKF:
     """
     EKF Estimation Algorithm for tennis ball tracking
@@ -34,13 +52,13 @@ class EKF:
         Compute state dynamics. In this case, the
 
         :param state: 6-dimensional state vector (3 position
-        states, 3 velocity states): [x, y, z, xdot, ydot, zdot]
+        states, 3 velocity states): [x, y, z, xdot, ydot, zdot]˜
         """
         x, y, z, xdot, ydot, zdot = state
         x += self.dt * xdot
         y += self.dt * ydot
         z += self.dt * zdot + 0.5 * consts.g * (self.dt ** 2)
-        zdot -= consts.g * self.dt
+        zdot += consts.g * self.dt
         return np.array([x, y, z, xdot, ydot, zdot])
 
     def A(self):
@@ -77,7 +95,11 @@ class EKF:
         be a (u,v) location in an image in pixels
         :return: the mean and covariance updates for the current time step
         """
-        assert len(cameras) > 0, "no cameras provided"
+
+        # if no cameras are provided, return the unmodified mean and covariances
+        if len(cameras) == 0:
+            return mu, sigma
+
         assert len(cameras) == (np.shape(y)[0]), ("number of cameras does not "
                                                   "match number of "
                                                   "measurements")
@@ -94,13 +116,16 @@ class EKF:
         sigma_update = sigma - K @ C @ sigma
         return mu_update, sigma_update
 
-    def run(self, cameras, y):
+    def run(self, cameras, y, visibility):
         mu_hist = []
         sigma_hist = []
         for i in range(np.shape(y)[1]):
             mu_predict, sigma_predict = self.predict(self.mu, self.sigma)
+            valid_cameras, visible_measurements = bundle_visible_measurements(
+                cameras, y[:, i, :], visibility[:, i])
             self.mu, self.sigma = self.update(mu_predict, sigma_predict,
-                                              cameras, y[:, i, :])
+                                              valid_cameras,
+                                              visible_measurements)
             mu_hist.append(self.mu)
             sigma_hist.append(self.sigma)
         return np.asarray(mu_hist), np.asarray(sigma_hist)
