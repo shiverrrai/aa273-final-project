@@ -46,7 +46,7 @@ class SystemModel:
         self.x0 = x0
         self.total_time = total_time
         self.dt = dt
-        self.x_impact = []
+        self.x_impact = None
 
     def run_sim(self, bounces=2):
         '''
@@ -70,11 +70,11 @@ class SystemModel:
             x_hist.extend(sol.y.T)
 
             # handle bounce event
-            if sol.status == 1:
+            if sol.status == 1 and self.x_impact is None:
                 # copy state vector when bounce occurred
                 x, y, z, vx, vy, vz = sol.y[:, -1]
-                # store ball impact location
-                self.x_impact.append(sol.y[:, -1])
+                # store ball's first impact location
+                self.x_impact = sol.y[:, -1]
 
                 # exit sim if ball has almost stopped
                 if abs(vz) < 0.1:
