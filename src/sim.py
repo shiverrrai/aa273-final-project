@@ -20,7 +20,7 @@ model = system_model.SystemModel(x0, run_time, dt)
 
 # CAMERA MODEL SETUP
 camera_params = {
-    'distance': 10,  # Meters from court centerline
+    'distance': 25,  # Meters from court centerline
     'elevation': 4,  # Meters above ground
     'focal_length': 1000,  # Pixels (higher = more zoom, narrower FOV)
     'image_size': (1280, 960),  # image size in pixels
