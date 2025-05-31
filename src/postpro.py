@@ -5,7 +5,8 @@ from system_model import SystemModel
 
 def run_study(num_runs: int, ground_truth_model: SystemModel,
               estimation_filter: any,
-              mu_initial: np.array, sigma_initial: np.array, cameras: list):
+              mu_initial: np.array, sigma_initial: np.array, cameras: list,
+              camera_noise: float):
     """
     Runs a comparative study between an estimation filter and a ground truth
     model. Computes a common set of metrics to assess filter performance.
@@ -34,7 +35,8 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
             ground_truth_model.x_impact[1]
         ground_truth_bounces.append([gt_bounce_x, gt_bounce_y])
         # compute measurement data for a given ground truth trajectory
-        y, visibility = sensor_model.get_camera_measurements(cameras, x)
+        y, visibility = sensor_model.get_camera_measurements(cameras, x,
+                                                             camera_noise)
         # run estimation filter with given measurements and camera instances
         estimation_filter.run(cameras, y, visibility)
         # compute estimated bounce location (ignoring instances where a
@@ -63,5 +65,7 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
     print(f'Comparative study results: (n={num_runs})\n')
     print(f'Mean Bounce Location Error = {mean_error:.3f} m\n')
     print(f'Error Standard Deviation = {std_dev:.3f} m\n')
-    print(f'Missed Detection Rate = {(missed_detections / num_runs) * 100:.1f}%\n')
+    print(
+        f'Missed Detection Rate = '
+        f'{(missed_detections / num_runs) * 100:.1f}%\n')
     return mean_error, std_dev, detected_bounce_errors

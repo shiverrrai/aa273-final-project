@@ -5,13 +5,13 @@ import plotly.graph_objects as go
 import scene
 import constants as consts
 from ekf import EKF
+import imm
 import sensor_model
 import postpro
 
 '''
 TODOs: 
 2. implement particle filter
-3. implement IMM model
 '''
 # GROUND TRUTH MODEL SETUP
 x0 = np.array([0, 0, 1.0, 20.0, 0.0, 5.0])
@@ -47,13 +47,22 @@ mu_initial = np.zeros(6)
 sigma_initial = np.eye(6)
 Q = 0.1 * np.eye(6)
 R = np.eye(2 * len(cameras))
+P_ij = np.array([[0.9, 0.1],
+                 [0.2, 0.8]])
 ekf = EKF(mu_initial, sigma_initial, Q, R, dt)
+ekf_flight = imm.GenericEkf(imm.FlightModel(dt), mu_initial, sigma_initial, Q,
+                            R, dt)
+ekf_bounce = imm.GenericEkf(imm.BounceModel(dt), mu_initial, sigma_initial, Q,
+                            R, dt)
+imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], mu_initial, sigma_initial, P_ij,
+                     dt)
 
 # RUN SIM
 show_cameras = True
 t, x = model.run_sim()
-y, visibility = sensor_model.get_camera_measurements(cameras, x)
+y, visibility = sensor_model.get_camera_measurements(cameras, x, 1)
 x_est, sigma = ekf.run(cameras, y, visibility)
+x_est_imm, sigma_imm = imm_tracker.run(cameras, y, visibility)
 
 # PLOT SCENE RESULTS
 fig = go.Figure()
@@ -83,12 +92,34 @@ if ekf.impact_data is not None:
     scene.plot_impact_location(ax, x, y, sigma, color='red',
                                label='EKF',
                                show_plot=False)
+
+if imm_tracker.impact_data is not None:
+    x, y, sigma = imm_tracker.impact_data
+    scene.plot_impact_location(ax, x, y, sigma, color='blue',
+                               label='IMM',
+                               show_plot=False)
 fig.show()
 
 # COLLECT BOUNCE STATISTICS
+mu_initial = np.zeros(6)
+sigma_initial = np.eye(6)
+Q = 0.1 * np.eye(6)
+R = 1.0 * np.eye(2 * len(cameras))
+ekf = EKF(mu_initial, sigma_initial, Q, R, dt)
 mean_error, std_dev, missed_detections = postpro.run_study(num_runs=100,
                                                            ground_truth_model=model,
                                                            estimation_filter=ekf,
                                                            mu_initial=mu_initial,
                                                            sigma_initial=sigma_initial,
-                                                           cameras=cameras)
+                                                           cameras=cameras,
+                                                           camera_noise=1.0)
+
+imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], mu_initial, sigma_initial, P_ij,
+                     dt)
+postpro.run_study(num_runs=100,
+                  ground_truth_model=model,
+                  estimation_filter=imm_tracker,
+                  mu_initial=mu_initial,
+                  sigma_initial=sigma_initial,
+                  cameras=cameras,
+                  camera_noise=1.0)
