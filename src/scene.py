@@ -41,7 +41,7 @@ def plot_ball_trajectory(fig, trajectory, name, color):
 
 def draw_camera_frustum(fig, cam, color, cam_name, near_plane=5, far_plane=25):
     pos = cam.C.flatten()
-    R_inv = cam.R.T
+    R_inv = cam.R.T # inverse: camera --> world
 
     # camera center (no legend)
     fig.add_trace(go.Scatter3d(
@@ -104,6 +104,8 @@ def draw_camera_frustum(fig, cam, color, cam_name, near_plane=5, far_plane=25):
 def generate_camera_views(cameras, positions, model_impacts=None):
     """
     Generate and display camera views showing the projected ball trajectory.
+    Note: The camera view depends on the camera's roll, pitch, and yaw angles 
+    defined in the PinholeCamera object.
     
     Args:
         cameras (list): List of PinholeCamera objects to generate views for

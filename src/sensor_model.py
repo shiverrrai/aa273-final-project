@@ -42,7 +42,7 @@ class PinholeCamera:
 
         Args:
             position (list): [x, y, z] camera center in world coordinates
-            rotation_angles (list): [roll, pitch, yaw] in radians. (rotating camera in fixed world frame)
+            rotation_angles (list): [roll, pitch, yaw] in radians.
                 - roll: rotation around X-axis
                 - pitch: rotation around Y-axis 
                 - yaw: rotation around Z-axis 
@@ -62,25 +62,25 @@ class PinholeCamera:
         # Individual rotation matrices
         Rx = np.array([  # Roll (around X)
             [1, 0, 0],
-            [0, np.cos(-roll), -np.sin(-roll)],
-            [0, np.sin(-roll), np.cos(-roll)]
+            [0, np.cos(roll), -np.sin(roll)],
+            [0, np.sin(roll), np.cos(roll)]
         ])
 
         Ry = np.array([  # Pitch (around Y)
-            [np.cos(-pitch), 0, np.sin(-pitch)],
+            [np.cos(pitch), 0, np.sin(pitch)],
             [0, 1, 0],
-            [-np.sin(-pitch), 0, np.cos(-pitch)]
+            [-np.sin(pitch), 0, np.cos(pitch)]
         ])
 
         Rz = np.array([  # Yaw (around Z)
-            [np.cos(-yaw), -np.sin(-yaw), 0],
-            [np.sin(-yaw), np.cos(-yaw), 0],
+            [np.cos(yaw), -np.sin(yaw), 0],
+            [np.sin(yaw), np.cos(yaw), 0],
             [0, 0, 1]
         ])
 
         # Combined rotation matrix
-        # Note: visualize as rotating camera in fixed world frame
-        self.R = Rz @ Ry @ Rx
+        # (camera --> world).T = (world --> camera)
+        self.R = (Rz @ Ry @ Rx).T
 
     def world_to_camera(self, world_coords):
         """
@@ -102,6 +102,7 @@ class PinholeCamera:
         p_world = np.array(position).reshape(3, 1)
 
         # Transform: p_cam = R(p_world - C)
+        # R is the rotation matrix from world to camera coordinates
         p_cam = self.R @ (p_world - self.C)
 
         return p_cam
