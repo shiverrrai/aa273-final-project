@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
 # Import simulation modules
-import system_model
+import ground_truth_model
 import scene
 
 

@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import system_model
+import ground_truth_model
+import estimation_model
 import plotly.graph_objects as go
 import scene
 import constants as consts
@@ -8,16 +9,18 @@ from ekf import EKF
 import imm
 import sensor_model
 import postpro
+import estimation_helpers as eh
 
 '''
 TODOs: 
+1. Update documentation
 2. implement particle filter
 '''
 # GROUND TRUTH MODEL SETUP
 x0 = np.array([0, 0, 1.0, 20.0, 0.0, 5.0])
 run_time = 10
 dt = 0.01
-model = system_model.SystemModel(x0, run_time, dt)
+model = ground_truth_model.SystemModel(x0, run_time, dt)
 
 # CAMERA MODEL SETUP
 camera_params = {
@@ -49,26 +52,24 @@ Q = 0.1 * np.eye(6)
 R = np.eye(2 * len(cameras))
 P_ij = np.array([[0.9, 0.1],
                  [0.2, 0.8]])
-ekf = EKF(mu_initial, sigma_initial, Q, R, dt)
-ekf_flight = imm.GenericEkf(imm.FlightModel(dt), mu_initial, sigma_initial, Q,
-                            R, dt)
-ekf_bounce = imm.GenericEkf(imm.BounceModel(dt), mu_initial, sigma_initial, Q,
-                            R, dt)
-imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], mu_initial, sigma_initial, P_ij,
-                     dt)
+ekf = EKF(estimation_model.FlightModel(), mu_initial, sigma_initial, Q, R, dt)
+ekf_flight = EKF(estimation_model.FlightModel(), mu_initial, sigma_initial, Q, R, dt)
+ekf_bounce = EKF(estimation_model.BounceModel(), mu_initial, sigma_initial, Q, R, dt)
+imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], P_ij, dt)
 
 # RUN SIM
 show_cameras = True
 t, x = model.run_sim()
 y, visibility = sensor_model.get_camera_measurements(cameras, x, 1)
-x_est, sigma = ekf.run(cameras, y, visibility)
-x_est_imm, sigma_imm = imm_tracker.run(cameras, y, visibility)
+x_est, sigma = eh.run_estimator(ekf, cameras, y, visibility)
+x_est_imm, sigma_imm = eh.run_estimator(imm_tracker, cameras, y, visibility)
 
 # PLOT SCENE RESULTS
 fig = go.Figure()
 scene.draw_court(fig)
 scene.plot_ball_trajectory(fig, x, "Ground Truth", "green")
 scene.plot_ball_trajectory(fig, x_est, "EKF Estimate", "yellowgreen")
+scene.plot_ball_trajectory(fig, x_est_imm, "IMM Estimate", "blue")
 if show_cameras:
     colors = ['red', 'blue']
     for i, cam in enumerate(cameras):
@@ -105,20 +106,19 @@ mu_initial = np.zeros(6)
 sigma_initial = np.eye(6)
 Q = 0.1 * np.eye(6)
 R = 1.0 * np.eye(2 * len(cameras))
-ekf = EKF(mu_initial, sigma_initial, Q, R, dt)
+ekf.reset(mu_initial, sigma_initial)
 mean_error, std_dev, missed_detections = postpro.run_study(num_runs=100,
                                                            ground_truth_model=model,
-                                                           estimation_filter=ekf,
+                                                           estimator=ekf,
                                                            mu_initial=mu_initial,
                                                            sigma_initial=sigma_initial,
                                                            cameras=cameras,
                                                            camera_noise=1.0)
-
-imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], mu_initial, sigma_initial, P_ij,
-                     dt)
+imm_tracker.reset(mu_initial, sigma_initial)
+imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], P_ij, dt)
 postpro.run_study(num_runs=100,
                   ground_truth_model=model,
-                  estimation_filter=imm_tracker,
+                  estimator=imm_tracker,
                   mu_initial=mu_initial,
                   sigma_initial=sigma_initial,
                   cameras=cameras,
