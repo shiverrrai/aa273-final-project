@@ -48,6 +48,9 @@ class SystemModel:
         self.dt = dt
         self.x_impact = None
 
+    def reset(self):
+        self.x_impact = None
+
     def run_sim(self, bounces=2):
         '''
         :param bounces: number of bounces to run simulation for

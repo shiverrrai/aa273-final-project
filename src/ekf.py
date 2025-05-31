@@ -35,7 +35,12 @@ def check_ground_impact(prev_state, prev_P, curr_state, curr_P, dt):
     moment of impact
     """
     z0, z1 = prev_state[2], curr_state[2]
-    if z0 > 0 and z1 <= 0:
+    x0, x1 = prev_state[0], curr_state[0]
+
+    # search for bounce in a reasonable position window
+    buffer = 1
+    position_window = [consts.court_length / 2, consts.court_length + buffer]
+    if position_window[0] <= x1 <= position_window[1] and (np.sign(z0) <= 0 or np.sign(z1) <= 0):
         alpha = z0 / (z0 - z1)
         t_impact = alpha * dt
         x_impact = prev_state[0] + alpha * (curr_state[0] - prev_state[0])
@@ -70,6 +75,11 @@ class EKF:
         self.Q = Q
         self.R = R
         self.dt = dt
+        self.impact_data = None
+
+    def reset(self, mu_initial, sigma_initial):
+        self.mu = mu_initial
+        self.sigma = sigma_initial
         self.impact_data = None
 
     def f(self, state):
