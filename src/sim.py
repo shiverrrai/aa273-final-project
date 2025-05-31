@@ -101,6 +101,9 @@ if imm_tracker.impact_data is not None:
                                show_plot=False)
 fig.show()
 
+# PLOT IMM RESULTS
+scene.plot_imm_results(x_est_imm, np.asarray(imm_tracker.alpha_hist))
+
 # COLLECT BOUNCE STATISTICS
 mu_initial = np.zeros(6)
 sigma_initial = np.eye(6)

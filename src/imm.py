@@ -11,6 +11,7 @@ class IMMTracker:
         self.mu = self.models[0].mu
         self.sigma = self.models[0].sigma
         self.impact_data = None
+        self.alpha_hist = []
 
     def set_state(self, mu, sigma):
         self.mu = mu.copy()
@@ -30,7 +31,10 @@ class IMMTracker:
 
         c_j = np.zeros(N)
         for j in range(N):
-            c_j[j] = sum(self.P_ij[i, j] * self.alpha[i] for i in range(N))
+            c = 0
+            for i in range(N):
+                c += self.P_ij[i, j] * self.alpha[i]
+            c_j[j] = c
 
         for j in range(N):
             x_j = np.zeros(6)
@@ -46,6 +50,7 @@ class IMMTracker:
         return mixed_x, mixed_P, c_j
 
     def predict(self):
+        self.alpha_hist.append(self.alpha)
         mixed_x, mixed_P, _ = self.mix_states()
         for i, model in enumerate(self.models):
             model.set_state(mixed_x[i], mixed_P[i])
