@@ -26,17 +26,48 @@ def draw_court(fig):
     ))
     return fig
 
+# Utility function to smooth trajectory using moving average for ball trajectory
+def smooth_trajectory(trajectory, window_size=5):
+    """Apply moving average smoothing to trajectory."""
+    if len(trajectory) < window_size:
+        return trajectory
+    
+    smoothed = np.zeros_like(trajectory)
+    for i in range(len(trajectory)):
+        start_idx = max(0, i - window_size // 2)
+        end_idx = min(len(trajectory), i + window_size // 2 + 1)
+        smoothed[i] = np.mean(trajectory[start_idx:end_idx], axis=0)
+    
+    return smoothed
 
-def plot_ball_trajectory(fig, trajectory, name, color):
+def plot_ball_trajectory(fig, trajectory, name, color, line_style=None):
     # Plot tennis ball trajectory
-    fig.add_trace(go.Scatter3d(
-        x=trajectory[:, 0], y=trajectory[:, 1], z=trajectory[:, 2],
-        mode='lines+markers',
-        name=name,
-        marker=dict(size=3, color=color),
-        line=dict(width=4),
-        showlegend=True,
-    ))
+    if line_style is not None:
+        # Apply smoothing
+        smooth_traj = smooth_trajectory(trajectory, window_size=5)
+
+        fig.add_trace(go.Scatter3d(
+            x=smooth_traj[:, 0], 
+            y=smooth_traj[:, 1], 
+            z=smooth_traj[:, 2],
+            mode='lines',  # Clean lines only, no markers
+            name=name,
+            line=dict(
+                width=5,      # Thick lines for visibility
+                color=color   # Remove dash - all solid lines
+            ),
+            showlegend=True,
+        ))
+    else:
+        # Original behavior (lines + markers) - keeps sim.py working
+        fig.add_trace(go.Scatter3d(
+            x=trajectory[:, 0], y=trajectory[:, 1], z=trajectory[:, 2],
+            mode='lines+markers',
+            name=name,
+            marker=dict(size=3, color=color),
+            line=dict(width=4),
+            showlegend=True,
+        ))
 
 
 def draw_camera_frustum(fig, cam, color, cam_name, near_plane=5, far_plane=25):

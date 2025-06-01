@@ -64,10 +64,10 @@ def check_ground_impact(prev_particles, prev_weights, curr_particles, curr_weigh
 
 class ParticleFilter:
     """
-    Particle Filter for tennis ball tracking - compatible with EKF interface
+    Particle Filter for tennis ball tracking
     """
 
-    def __init__(self, mu_initial, sigma_initial, Q, R, dt, n_particles=1000):
+    def __init__(self, mu_initial, sigma_initial, Q, R, dt, n_particles=5000):
         """
         Initialize the Particle Filter
 
@@ -89,7 +89,6 @@ class ParticleFilter:
         # Initialize particles and weights
         self.particles = None
         self.weights = None
-        self.particles_history = []  # For uncertainty ribbons
         self.initialize_particles()
         
         self.eps = 2 * np.finfo(float).eps
@@ -99,7 +98,6 @@ class ParticleFilter:
         self.mu = np.array(mu_initial)
         self.sigma = np.array(sigma_initial)
         self.impact_data = None
-        self.particles_history = []
         self.initialize_particles()
 
     def initialize_particles(self):
@@ -256,19 +254,15 @@ class ParticleFilter:
         :param cameras: list of PinholeCamera objects
         :param y: (m, n, 2) measurement array
         :param visibility: (m, n) visibility array
-        :return: (n, 6) mean estimates, (n, 6, 6) covariances, particles history
+        :return: (n, 6) mean estimates, (n, 6, 6) covariances
         """
         mu_hist = []
         sigma_hist = []
-        particles_hist = []
-        
-        print(f"PF: Running with {self.n_particles} particles")
         
         for i in range(y.shape[1]):
             # Store previous state for impact detection
             prev_particles = self.particles.copy()
             prev_weights = self.weights.copy()
-            prev_mu, prev_sigma = self.get_curr_mu_sigma()
             
             # PF Steps
             self.predict()
@@ -278,12 +272,12 @@ class ParticleFilter:
                 cameras, y[:, i, :], visibility[:, i]
             )
             
-            # Debug info
-            if i < 5 or i % 50 == 0:  # Print debug for first few timesteps and every 50th
-                print(f"PF timestep {i}: {len(valid_cameras)} visible cameras")
-                if len(valid_cameras) > 0:
-                    print(f"  Measurements: {visible_measurements}")
-                    print(f"  Particle mean position: {np.mean(self.particles[:3], axis=1)}")
+            # # Debug info
+            # if i < 5 or i % 50 == 0:  # Print debug for first few timesteps and every 50th
+            #     print(f"PF timestep {i}: {len(valid_cameras)} visible cameras")
+            #     if len(valid_cameras) > 0:
+            #         print(f"  Measurements: {visible_measurements}")
+            #         print(f"  Particle mean position: {np.mean(self.particles[:3], axis=1)}")
             
             self.update(valid_cameras, visible_measurements)
             self.resample()
@@ -299,45 +293,9 @@ class ParticleFilter:
                 )
                 if impact is not None and self.impact_data is None:
                     self.impact_data = impact
-                    print(f"PF: Ground impact detected at timestep {i}")
             
             # Store history
             mu_hist.append(self.mu.copy())
             sigma_hist.append(self.sigma.copy())
-            particles_hist.append(self.particles.copy())
-        
-        # Store particle history for uncertainty ribbons
-        self.particles_history = np.array(particles_hist)  # (n_timesteps, 6, n_particles)
-        
-        print("PF: Completed successfully")
-        return np.array(mu_hist), np.array(sigma_hist)
 
-    def get_percentile_bounds(self, percentile_low=2.5, percentile_high=97.5):
-        """
-        Get percentile bounds for uncertainty ribbons
-        
-        :param percentile_low: lower percentile (default 2.5 for 95% CI)
-        :param percentile_high: upper percentile (default 97.5 for 95% CI)
-        :return: lower and upper bounds for each state component
-        """
-        if len(self.particles_history) == 0:
-            return None, None
-        
-        # Compute weighted percentiles for each timestep and state component
-        n_timesteps, n_states, n_particles = self.particles_history.shape
-        
-        lower_bounds = np.zeros((n_timesteps, n_states))
-        upper_bounds = np.zeros((n_timesteps, n_states))
-        
-        for t in range(n_timesteps):
-            for s in range(n_states):
-                # For simplicity, use unweighted percentiles
-                # (weighted percentiles are more complex to implement)
-                lower_bounds[t, s] = np.percentile(
-                    self.particles_history[t, s, :], percentile_low
-                )
-                upper_bounds[t, s] = np.percentile(
-                    self.particles_history[t, s, :], percentile_high
-                )
-        
-        return lower_bounds, upper_bounds
+        return np.array(mu_hist), np.array(sigma_hist)
