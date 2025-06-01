@@ -36,7 +36,7 @@ class PinholeCamera:
     """
 
     def __init__(self, position, rotation_angles, focal_length=800,
-                 image_size=(1280, 960)):
+                 image_size=(1280, 960), measurement_factor=1):
         """
         Initialize a pinhole camera model.
 
@@ -49,12 +49,17 @@ class PinholeCamera:
             focal_length (float): Camera focal length in pixels
                 - Controls zoom/FOV (higher values = more zoom, narrower FOV)
             image_size (tuple): (width, height) in pixels
+            measurement_factor (int): Factor by which camera is slower than ground truth
+                = 1: camera measures at same rate as ground truth
+                = 2: camera measures at half the rate (every 2nd timestep)
+                = 3: camera measures at 1/3 the rate (every 3rd timestep)
         """
         self.C = np.array(position).reshape(3, 1)  # Camera center
         self.f = focal_length
         self.image_size = image_size
         self.u0, self.v0 = image_size[0] / 2, image_size[
             1] / 2  # Principal point
+        self.measurement_factor = measurement_factor
 
         # Build rotation matrix from Euler angles
         roll, pitch, yaw = rotation_angles
@@ -240,20 +245,30 @@ def get_camera_measurements(cameras, trajectory, noise_std=1.0):
         camera_measurements = []
         camera_visibilities = []
 
-        for point in trajectory:
+        for step, point in enumerate(trajectory):
             # Extract position coordinates if needed
             world_coords = point[:3] if len(point) > 3 else point
-            pixel, visible = cam.g(world_coords)
-
-            if visible:
-                # Add Gaussian noise to measurements
-                noisy_pixel = pixel + np.random.normal(0, noise_std, size=2)
-                camera_measurements.append(noisy_pixel)
+            
+            # Check if camera should measure at this timestep (sparse measurements)
+            should_measure = (step % cam.measurement_factor == 0)
+            
+            if should_measure:
+                # Camera takes a measurement
+                pixel, visible = cam.g(world_coords)
+                
+                if visible:
+                    # Add Gaussian noise to measurements
+                    noisy_pixel = pixel + np.random.normal(0, noise_std, size=2)
+                    camera_measurements.append(noisy_pixel)
+                    camera_visibilities.append(True)
+                else:
+                    # Point not visible (occlusion, out of frame, etc.)
+                    camera_measurements.append(np.array([np.nan, np.nan]))
+                    camera_visibilities.append(False)
             else:
-                # For invisible points, add NaN values
+                # Camera doesn't measure at this timestep (sparse measurement)
                 camera_measurements.append(np.array([np.nan, np.nan]))
-
-            camera_visibilities.append(visible)
+                camera_visibilities.append(False)
 
         all_measurements.append(np.array(camera_measurements))
         all_visibilities.append(np.array(camera_visibilities))

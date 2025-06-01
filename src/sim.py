@@ -15,8 +15,8 @@ TODOs:
 '''
 # GROUND TRUTH MODEL SETUP
 x0 = np.array([0, 0, 1.0, 20.0, 0.0, 5.0])
-run_time = 10
-dt = 0.01
+run_time = 10 # seconds
+dt = 0.01 # seconds
 model = system_model.SystemModel(x0, run_time, dt)
 
 # CAMERA MODEL SETUP
