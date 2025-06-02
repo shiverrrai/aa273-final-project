@@ -1,10 +1,29 @@
 import numpy as np
 
+
+def compute_transition_matrix(z, threshold=0.5, sharpness=10):
+    """
+    Adjust transition probabilities based on vertical position z.
+    Returns a 2x2 transition matrix.
+    """
+    # Use a sigmoid to interpolate bounce likelihood near ground
+    p_bounce = 1 / (1 + np.exp(sharpness * (z - threshold)))
+
+    # Limit the extremes to avoid numerical issues
+    p_bounce = np.clip(p_bounce, 0.01, 0.99)
+
+    return np.array([
+        [1 - p_bounce, p_bounce],
+        # From flight: mostly stays in flight, some chance of bounce
+        [0.1, 0.9]
+        # From bounce: may return to flight (if modeling multiple bounces)
+    ])
+
 class IMMTracker:
-    def __init__(self, models, transition_probs, dt):
+    def __init__(self, models, dt):
         assert len(models) > 0, "There must be at least one model present."
         self.models = models
-        self.P_ij = transition_probs
+        self.P_ij = compute_transition_matrix(models[0].mu[2])
         # conditional model probabilities
         self.alpha = np.ones(len(models)) / len(models)
         self.dt = dt
@@ -28,6 +47,7 @@ class IMMTracker:
     def mix_states(self):
         N = len(self.models)
         mixed_x, mixed_P = [], []
+        self.P_ij = compute_transition_matrix(self.mu[2])
 
         c_j = np.zeros(N)
         for j in range(N):
@@ -42,7 +62,7 @@ class IMMTracker:
             for i in range(N):
                 x_i, P_i = self.models[i].get_state()
                 weight = self.P_ij[i, j] * self.alpha[i] / c_j[j]
-                dx = np.array([x_i - x_i.mean()]).T
+                dx = (x_i - x_j).reshape(-1, 1)
                 x_j += weight * x_i
                 P_j += weight * (P_i + dx @ dx.T)
             mixed_x.append(x_j)

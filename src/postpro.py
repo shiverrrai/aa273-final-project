@@ -18,6 +18,7 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
     :param mu_initial: initial estimation mean
     :param sigma_initial: initial estimation covariance
     :param cameras: list of PinholeCamera instances
+    :param camera_noise: sensor noise of camera models
     :return: mean error, standard deviation of error, percentage of missed
     detections
     """

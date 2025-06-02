@@ -64,6 +64,7 @@ def run_estimator(estimator, cameras, y, visibility):
     update step of the EKF algorithm only when a given measurement sample
     is visible.
 
+    :param estimator: EKF or IMM estimator object
     :param cameras: list of PinholeCamera objects
     :param y: (m, n, 2) measurement nd array where m is number of cameras,
     n is number of measurements, and 2 is the number of pixels per

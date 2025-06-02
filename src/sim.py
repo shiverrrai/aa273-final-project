@@ -11,11 +11,7 @@ import sensor_model
 import postpro
 import estimation_helpers as eh
 
-'''
-TODOs: 
-1. Update documentation
-2. implement particle filter
-'''
+
 # GROUND TRUTH MODEL SETUP
 x0 = np.array([0, 0, 1.0, 20.0, 0.0, 5.0])
 run_time = 10
@@ -50,12 +46,12 @@ mu_initial = np.zeros(6)
 sigma_initial = np.eye(6)
 Q = 0.1 * np.eye(6)
 R = np.eye(2 * len(cameras))
-P_ij = np.array([[0.9, 0.1],
-                 [0.2, 0.8]])
 ekf = EKF(estimation_model.FlightModel(), mu_initial, sigma_initial, Q, R, dt)
-ekf_flight = EKF(estimation_model.FlightModel(), mu_initial, sigma_initial, Q, R, dt)
-ekf_bounce = EKF(estimation_model.BounceModel(), mu_initial, sigma_initial, Q, R, dt)
-imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], P_ij, dt)
+ekf_flight = EKF(estimation_model.FlightModel(), mu_initial, sigma_initial, Q,
+                 R, dt)
+ekf_bounce = EKF(estimation_model.BounceModel(), mu_initial, sigma_initial, Q,
+                 R, dt)
+imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], dt)
 
 # RUN SIM
 show_cameras = True
@@ -110,7 +106,7 @@ sigma_initial = np.eye(6)
 Q = 0.1 * np.eye(6)
 R = 1.0 * np.eye(2 * len(cameras))
 ekf.reset(mu_initial, sigma_initial)
-mean_error, std_dev, missed_detections = postpro.run_study(num_runs=100,
+mean_error, std_dev, missed_detections = postpro.run_study(num_runs=500,
                                                            ground_truth_model=model,
                                                            estimator=ekf,
                                                            mu_initial=mu_initial,
@@ -118,8 +114,8 @@ mean_error, std_dev, missed_detections = postpro.run_study(num_runs=100,
                                                            cameras=cameras,
                                                            camera_noise=1.0)
 imm_tracker.reset(mu_initial, sigma_initial)
-imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], P_ij, dt)
-postpro.run_study(num_runs=100,
+imm_tracker = imm.IMMTracker([ekf_flight, ekf_bounce], dt)
+postpro.run_study(num_runs=500,
                   ground_truth_model=model,
                   estimator=imm_tracker,
                   mu_initial=mu_initial,

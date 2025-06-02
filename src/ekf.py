@@ -9,6 +9,7 @@ class EKF:
         """
         Initialize the EKF object
 
+        :param model: the dynamics model to use
         :param mu_initial: initial guess for state vector
         :param sigma_initial: initial guess for covariance matrix
         :param Q: process noise covariance matrix
@@ -40,8 +41,6 @@ class EKF:
         """
         Run the prediction step of the EKF algorithm.
 
-        :param mu: mean state vector
-        :param sigma: state covariance matrix
         :return: the mean and covariance predictions
         """
         A = self.model.A(self.dt)
@@ -55,8 +54,6 @@ class EKF:
         """
         Runs the update step of the EKF algorithm.
 
-        :param mu: the mean state vector
-        :param sigma: the state covariance matrix
         :param cameras: a list of PinholeCamera objects
         :param y: a (2m, ) measurement vector (where m is number of
         measurements. In this case, each measurement will

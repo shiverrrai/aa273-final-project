@@ -280,4 +280,5 @@ def plot_imm_results(state, alpha):
     ax1.set_xlabel("index")
     ax1.set_ylabel("Ball Vertical Position (m)")
     ax2.set_ylabel("IMM Belief")
+    ax1.grid(True)
     plt.show()
