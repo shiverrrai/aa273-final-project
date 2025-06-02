@@ -1,4 +1,4 @@
-TENNIS BALL TRACKING SIMULATION REPORT
+ TENNIS BALL TRACKING SIMULATION REPORT
 ==================================================
 
 Generated: 2025-06-01 22:09:18

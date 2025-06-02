@@ -39,7 +39,7 @@ class SimulationRunner:
         self.mu_initial = np.zeros(6)
         self.sigma_initial = np.eye(6)
         self.Q = 0.1 * np.eye(6)  # Process noise covariance
-        self.measurement_noise_std = 1.0  # pixels
+        self.measurement_noise_std = 5.0  # pixels
 
     def create_cameras(self, measurement_factor=1, camera_config='default'):
         """Create cameras with specified measurement factor and
