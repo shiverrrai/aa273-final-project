@@ -18,7 +18,6 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
     :param mu_initial: initial estimation mean
     :param sigma_initial: initial estimation covariance
     :param cameras: list of PinholeCamera instances
-    :param camera_noise: sensor noise of camera models
     :return: mean error, standard deviation of error, percentage of missed
     detections
     """
@@ -40,7 +39,7 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
         y, visibility = sensor_model.get_camera_measurements(cameras, x,
                                                              camera_noise)
         # run estimation filter with given measurements and camera instances
-        eh.run_estimator(estimator, cameras, y, visibility)
+        estimator.run(cameras, y, visibility)
         # compute estimated bounce location (ignoring instances where a
         # bounce was failed to be detected)
         estimated_bounce_x, estimated_bounce_y = np.nan, np.nan
@@ -67,7 +66,5 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
     print(f'Comparative study results: (n={num_runs})\n')
     print(f'Mean Bounce Location Error = {mean_error:.3f} m\n')
     print(f'Error Standard Deviation = {std_dev:.3f} m\n')
-    print(
-        f'Missed Detection Rate = '
-        f'{(missed_detections / num_runs) * 100:.1f}%\n')
+    print(f'Missed Detection Rate = {(missed_detections / num_runs) * 100:.1f}%\n')
     return mean_error, std_dev, detected_bounce_errors

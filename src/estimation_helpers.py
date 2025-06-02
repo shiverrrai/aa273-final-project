@@ -20,42 +20,6 @@ def bundle_visible_measurements(cameras, y, visiblity):
     return valid_cameras, np.asarray(visible_measurements)
 
 
-def check_ground_impact(prev_state, prev_P, curr_state, curr_P, dt):
-    """
-    Checks whether the estimated state has made impact with the ground.
-    Performs linear interpolation between previous and current state to
-    compute state estimate results at moment of impact.
-
-    :param prev_state: previous state estimate, (6,) np array
-    :param prev_P: previous covariance matrix, (6,6) nd array
-    :param curr_state: current state estimate, (6,) np array
-    :param curr_P: current covariance matrix, (6,6) nd array
-    :param dt: time step
-    :return: np array of x & y location, along with covariance matrix at
-    moment of impact
-    """
-    z0, z1 = prev_state[2], curr_state[2]
-    x0, x1 = prev_state[0], curr_state[0]
-
-    # search for bounce in a reasonable position window
-    buffer = 1
-    position_window = [consts.court_length / 2, consts.court_length + buffer]
-    if position_window[0] <= x1 <= position_window[1] and (
-            np.sign(z0) <= 0 or np.sign(z1) <= 0):
-        alpha = z0 / (z0 - z1)
-        t_impact = alpha * dt
-        x_impact = prev_state[0] + alpha * (curr_state[0] - prev_state[0])
-        y_impact = prev_state[1] + alpha * (curr_state[1] - prev_state[1])
-
-        P0_xyz = prev_P[0:3, 0:3]
-        P1_xyz = curr_P[0:3, 0:3]
-        P_impact = (1 - alpha) * P0_xyz + alpha * P1_xyz
-        sigma_xy = P_impact[0:2, 0:2]
-
-        return np.array([x_impact, y_impact, sigma_xy], dtype=object)
-    return None
-
-
 def run_estimator(estimator, cameras, y, visibility):
     """
     Runs the EKF algorithm on time series measurement data. Performs
