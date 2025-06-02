@@ -15,8 +15,8 @@ TODOs:
 '''
 # GROUND TRUTH MODEL SETUP
 x0 = np.array([0, 0, 1.0, 20.0, 0.0, 5.0])
-run_time = 10
-dt = 0.01
+run_time = 10 # seconds
+dt = 0.01 # seconds
 model = system_model.SystemModel(x0, run_time, dt)
 
 # CAMERA MODEL SETUP
@@ -73,17 +73,23 @@ fig.show(renderer="browser")
 
 # PLOT BOUNCE RESULTS
 fig, ax = plt.subplots()
+has_impact_data = False
 if model.x_impact is not None:
     x, y = model.x_impact[0], model.x_impact[1]
     scene.plot_impact_location(ax, x, y, None, color='green',
                                label='Ground Truth',
                                show_plot=False)
+    has_impact_data = True
 if ekf.impact_data is not None:
     x, y, sigma = ekf.impact_data
     scene.plot_impact_location(ax, x, y, sigma, color='red',
                                label='EKF',
                                show_plot=False)
-fig.show()
+    has_impact_data = True
+if has_impact_data:
+    plt.show()  # Use plt.show() instead of fig.show()
+else:
+    print("No bounce data detected to plot")
 
 # COLLECT BOUNCE STATISTICS
 mean_error, std_dev, missed_detections = postpro.run_study(num_runs=100,
