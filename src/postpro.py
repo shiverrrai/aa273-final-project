@@ -1,18 +1,20 @@
 import numpy as np
 import sensor_model
-from system_model import SystemModel
+from ground_truth_model import SystemModel
+import estimation_helpers as eh
 
 
 def run_study(num_runs: int, ground_truth_model: SystemModel,
-              estimation_filter: any,
-              mu_initial: np.array, sigma_initial: np.array, cameras: list):
+              estimator: any,
+              mu_initial: np.array, sigma_initial: np.array, cameras: list,
+              camera_noise: float):
     """
     Runs a comparative study between an estimation filter and a ground truth
     model. Computes a common set of metrics to assess filter performance.
 
     :param num_runs: number of runs to run the study for
     :param ground_truth_model: SystemModel instance
-    :param estimation_filter: estimation filter instance (ie, EKF)
+    :param estimator: estimation filter instance (ie, EKF)
     :param mu_initial: initial estimation mean
     :param sigma_initial: initial estimation covariance
     :param cameras: list of PinholeCamera instances
@@ -23,7 +25,7 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
     ground_truth_bounces = []
     estimated_bounces = []
     ground_truth_model.reset()
-    estimation_filter.reset(mu_initial, sigma_initial)
+    estimator.reset(mu_initial, sigma_initial)
 
     # run study
     for i in range(num_runs):
@@ -34,19 +36,20 @@ def run_study(num_runs: int, ground_truth_model: SystemModel,
             ground_truth_model.x_impact[1]
         ground_truth_bounces.append([gt_bounce_x, gt_bounce_y])
         # compute measurement data for a given ground truth trajectory
-        y, visibility = sensor_model.get_camera_measurements(cameras, x)
+        y, visibility = sensor_model.get_camera_measurements(cameras, x,
+                                                             camera_noise)
         # run estimation filter with given measurements and camera instances
-        estimation_filter.run(cameras, y, visibility)
+        estimator.run(cameras, y, visibility)
         # compute estimated bounce location (ignoring instances where a
         # bounce was failed to be detected)
         estimated_bounce_x, estimated_bounce_y = np.nan, np.nan
-        if estimation_filter.impact_data is not None:
+        if estimator.impact_data is not None:
             estimated_bounce_x, estimated_bounce_y, ekf_bounce_sigma = (
-                estimation_filter.impact_data)
+                estimator.impact_data)
         estimated_bounces.append([estimated_bounce_x, estimated_bounce_y])
         # reset objects before starting next run
         ground_truth_model.reset()
-        estimation_filter.reset(mu_initial, sigma_initial)
+        estimator.reset(mu_initial, sigma_initial)
     ground_truth_bounces = np.asarray(ground_truth_bounces)
     estimated_bounces = np.asarray(estimated_bounces)
     # compute error between ground truth and estimated bounce location

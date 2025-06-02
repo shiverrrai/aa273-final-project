@@ -298,3 +298,20 @@ def plot_impact_location(ax, x, y, sigma, color='green',
 
     if show_plot:
         plt.show()
+
+
+def plot_imm_results(state, alpha):
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    index = np.arange(state.shape[0])
+    ax1.plot(index, state[:, 2], label='ball vertical position', color='red')
+    ax2.plot(index, alpha[:, 0], label='flight probability', color='blue')
+    ax2.plot(index, alpha[:, 1], label='bounce probability', color='green')
+    ax1.legend()
+    ax2.legend()
+    ax1.set_title("IMM Belief vs Ball Vertical Position")
+    ax1.set_xlabel("index")
+    ax1.set_ylabel("Ball Vertical Position (m)")
+    ax2.set_ylabel("IMM Belief")
+    ax1.grid(True)
+    plt.show()
