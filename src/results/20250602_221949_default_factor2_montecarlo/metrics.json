@@ -1,0 +1,65 @@
+{
+  "ekf": {
+    "MAE": 0.259570248156105,
+    "RMSE": 0.29268325829018943,
+    "max_error": 0.802649548141194,
+    "final_error": 0.3193831790289018,
+    "impact_error": 0.4533987657830789
+  },
+  "pf": {
+    "MAE": 0.27909300757882183,
+    "RMSE": 0.3120106099908426,
+    "max_error": 0.8258775146235123,
+    "final_error": 0.3010167967967188,
+    "impact_error": 0.4765345005115572
+  },
+  "imm": {
+    "MAE": 0.26877353325997644,
+    "RMSE": 0.30059384813086676,
+    "max_error": 0.8313824068934615,
+    "final_error": 0.3255781534745718,
+    "impact_error": 0.4120608706348788
+  },
+  "monte_carlo": {
+    "ekf_mean": 0.2703537863121344,
+    "ekf_std": 0.1595336946831822,
+    "pf_mean": 0.24752253076305572,
+    "pf_std": 0.15969033756163262,
+    "imm_mean": 0.24531287982375335,
+    "imm_std": 0.12758288525533878,
+    "num_runs": 50,
+    "statistical_analysis": {
+      "sample_sizes": {
+        "ekf_total": 50,
+        "pf_total": 50,
+        "imm_total": 37,
+        "compared_sample_size": 37
+      },
+      "friedman_statistic": 0.7027027027027088,
+      "friedman_p_value": 0.7037364516598965,
+      "bonferroni_alpha": 0.016666666666666666,
+      "pairwise_tests": {
+        "ekf_vs_pf": {
+          "statistic": 321.0,
+          "p_value": 0.6545244270091644,
+          "significant": false
+        },
+        "ekf_vs_imm": {
+          "statistic": 334.0,
+          "p_value": 0.7999299755319953,
+          "significant": false
+        },
+        "pf_vs_imm": {
+          "statistic": 347.0,
+          "p_value": 0.9524598861316917,
+          "significant": false
+        }
+      },
+      "detection_rates": {
+        "ekf": 1.0,
+        "pf": 1.0,
+        "imm": 0.74
+      }
+    }
+  }
+}

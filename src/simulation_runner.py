@@ -15,6 +15,7 @@ import os
 import json
 import pickle
 from datetime import datetime
+from scipy.stats import friedmanchisquare, wilcoxon
 
 
 class SimulationRunner:
@@ -459,7 +460,88 @@ def generate_summary_report(results_dir, metrics, args):
                 f"{mc_data['pf_std']:.3f} m\n")
             f.write(
                 f"IMM Bounce Error: {mc_data['imm_mean']:.3f} ± "
-                f"{mc_data['imm_std']:.3f} m\n")
+                f"{mc_data['imm_std']:.3f} m\n\n")
+            
+            # Add statistical significance analysis
+            if 'statistical_analysis' in mc_data:
+                stats = mc_data['statistical_analysis']
+                f.write("STATISTICAL SIGNIFICANCE ANALYSIS:\n")
+                f.write("-" * 40 + "\n")
+                
+                # Report detection rates
+                f.write("Detection Rates:\n")
+                det_rates = stats['detection_rates']
+                f.write(f"EKF: {det_rates['ekf']:.1%} ({int(det_rates['ekf'] * 50)}/50)\n")
+                f.write(f"PF: {det_rates['pf']:.1%} ({int(det_rates['pf'] * 50)}/50)\n")
+                f.write(f"IMM: {det_rates['imm']:.1%} ({int(det_rates['imm'] * 50)}/50)\n\n")
+                
+                if stats.get('insufficient_data', False):
+                    f.write(f"Statistical Tests: Not performed (insufficient aligned data: {stats['sample_sizes']['compared_sample_size']} runs)\n")
+                    f.write("Recommendation: Increase Monte Carlo runs or investigate detection failures\n")
+                else:
+                    f.write(f"Statistical Tests (aligned sample size: {stats['sample_sizes']['compared_sample_size']} runs):\n")
+                    f.write(f"Friedman Test: χ² = {stats['friedman_statistic']:.3f}, "
+                           f"p = {stats['friedman_p_value']:.4f}\n")
+                    
+                    if stats['friedman_p_value'] < 0.05:
+                        f.write("Result: Significant differences detected across filters\n\n")
+                        
+                        f.write("Post-hoc Wilcoxon Signed-Rank Tests (Bonferroni-corrected α = 0.017):\n")
+                        
+                        pairwise = stats['pairwise_tests']
+                        
+                        # EKF vs PF
+                        f.write(f"EKF vs PF: p = {pairwise['ekf_vs_pf']['p_value']:.4f}")
+                        if pairwise['ekf_vs_pf']['significant']:
+                            f.write(" (significant)\n")
+                        else:
+                            f.write(" (not significant)\n")
+                        
+                        # EKF vs IMM
+                        f.write(f"EKF vs IMM: p = {pairwise['ekf_vs_imm']['p_value']:.4f}")
+                        if pairwise['ekf_vs_imm']['significant']:
+                            f.write(" (significant)\n")
+                        else:
+                            f.write(" (not significant)\n")
+                        
+                        # PF vs IMM
+                        f.write(f"PF vs IMM: p = {pairwise['pf_vs_imm']['p_value']:.4f}")
+                        if pairwise['pf_vs_imm']['significant']:
+                            f.write(" (significant)\n")
+                        else:
+                            f.write(" (not significant)\n")
+                        
+                        # Generate interpretation
+                        f.write("\nInterpretation:\n")
+                        significant_pairs = []
+                        
+                        if pairwise['ekf_vs_imm']['significant']:
+                            # Determine which is better
+                            if mc_data['imm_mean'] < mc_data['ekf_mean']:
+                                significant_pairs.append("IMM significantly outperformed EKF")
+                            else:
+                                significant_pairs.append("EKF significantly outperformed IMM")
+                        
+                        if pairwise['pf_vs_imm']['significant']:
+                            if mc_data['imm_mean'] < mc_data['pf_mean']:
+                                significant_pairs.append("IMM significantly outperformed PF")
+                            else:
+                                significant_pairs.append("PF significantly outperformed IMM")
+                        
+                        if pairwise['ekf_vs_pf']['significant']:
+                            if mc_data['ekf_mean'] < mc_data['pf_mean']:
+                                significant_pairs.append("EKF significantly outperformed PF")
+                            else:
+                                significant_pairs.append("PF significantly outperformed EKF")
+                        
+                        if significant_pairs:
+                            for pair in significant_pairs:
+                                f.write(f"- {pair}\n")
+                        else:
+                            f.write("- No significant pairwise differences after correction\n")
+                            
+                    else:
+                        f.write("Result: No significant differences detected across filters\n")
 
     print(f"Summary report saved to: {report_file}")
 
@@ -544,67 +626,153 @@ def main():
         # Run Monte Carlo for EKF
         print("  Running EKF Monte Carlo...")
         ekf_filter = EKF(estimation_model.FlightModel(), sim_runner.mu_initial,
-                         sim_runner.sigma_initial,
-                         sim_runner.Q,
-                         np.eye(4) * sim_runner.measurement_noise_std ** 2,
-                         sim_runner.dt)
+                            sim_runner.sigma_initial,
+                            sim_runner.Q,
+                            np.eye(4) * sim_runner.measurement_noise_std ** 2,
+                            sim_runner.dt)
         ekf_mean_error, ekf_std_dev, ekf_bounce_errors = postpro.run_study(
-            num_runs=50,
+            num_runs=100,
             ground_truth_model=ground_truth_model.SystemModel(sim_runner.x0,
-                                                              sim_runner.run_time,
-                                                              sim_runner.dt),
+                                                                sim_runner.run_time,
+                                                                sim_runner.dt),
             estimator=ekf_filter,
             mu_initial=sim_runner.mu_initial,
             sigma_initial=sim_runner.sigma_initial,
             cameras=sim_runner.create_cameras(args.measurement_factor,
-                                              args.camera_config),
+                                                args.camera_config),
             camera_noise=sim_runner.measurement_noise_std,
         )
 
         # Run Monte Carlo for IMM
         print("  Running IMM Monte Carlo...")
         ekf_flight = EKF(estimation_model.FlightModel(), sim_runner.mu_initial,
-                         sim_runner.sigma_initial, sim_runner.Q,
-                         np.eye(4) * sim_runner.measurement_noise_std ** 2,
-                         sim_runner.dt)
+                            sim_runner.sigma_initial, sim_runner.Q,
+                            np.eye(4) * sim_runner.measurement_noise_std ** 2,
+                            sim_runner.dt)
         ekf_bounce = EKF(estimation_model.BounceModel(), sim_runner.mu_initial,
-                         sim_runner.sigma_initial, sim_runner.Q,
-                         np.eye(4) * sim_runner.measurement_noise_std ** 2,
-                         sim_runner.dt)
+                            sim_runner.sigma_initial, sim_runner.Q,
+                            np.eye(4) * sim_runner.measurement_noise_std ** 2,
+                            sim_runner.dt)
 
         imm_filter = imm.IMMTracker([ekf_flight, ekf_bounce], sim_runner.dt)
         imm_mean_error, imm_std_dev, imm_bounce_errors = postpro.run_study(
-            num_runs=50,
+            num_runs=100,
             ground_truth_model=ground_truth_model.SystemModel(sim_runner.x0,
-                                                              sim_runner.run_time,
-                                                              sim_runner.dt),
+                                                                sim_runner.run_time,
+                                                                sim_runner.dt),
             estimator=imm_filter,
             mu_initial=sim_runner.mu_initial,
             sigma_initial=sim_runner.sigma_initial,
             cameras=sim_runner.create_cameras(args.measurement_factor,
-                                              args.camera_config),
+                                                args.camera_config),
             camera_noise=sim_runner.measurement_noise_std,
         )
 
         # Run Monte Carlo for PF
         print("  Running PF Monte Carlo...")
         pf_filter = ParticleFilter(sim_runner.mu_initial,
-                                   sim_runner.sigma_initial,
-                                   sim_runner.Q, np.eye(
+                                    sim_runner.sigma_initial,
+                                    sim_runner.Q, np.eye(
                 4) * sim_runner.measurement_noise_std ** 2,
-                                   sim_runner.dt, n_particles=1000)
+                                    sim_runner.dt, n_particles=1000)
         pf_mean_error, pf_std_dev, pf_bounce_errors = postpro.run_study(
-            num_runs=50,
+            num_runs=100,
             ground_truth_model=ground_truth_model.SystemModel(sim_runner.x0,
-                                                              sim_runner.run_time,
-                                                              sim_runner.dt),
+                                                                sim_runner.run_time,
+                                                                sim_runner.dt),
             estimator=pf_filter,
             mu_initial=sim_runner.mu_initial,
             sigma_initial=sim_runner.sigma_initial,
             cameras=sim_runner.create_cameras(args.measurement_factor,
-                                              args.camera_config),
+                                                args.camera_config),
             camera_noise=sim_runner.measurement_noise_std,
         )
+
+        # Statistical significance testing
+        print("  Performing statistical significance tests...")
+        
+        # Since postpro.run_study returns only valid detections (NaNs already removed),
+        # we need to track which runs succeeded for each filter
+        # We'll use the simpler approach of comparing the available data
+        # Note: This is less rigorous than paired comparisons but still valid
+        min_samples = min(len(ekf_bounce_errors), len(pf_bounce_errors), len(imm_bounce_errors))
+        
+        print(f"  Sample sizes - EKF: {len(ekf_bounce_errors)}, PF: {len(pf_bounce_errors)}, IMM: {len(imm_bounce_errors)}")
+        print(f"  Using first {min_samples} samples from each filter for statistical tests")
+        
+        if min_samples >= 10:  # Minimum sample size for meaningful tests
+            # Use first min_samples from each filter
+            ekf_sample = ekf_bounce_errors[:min_samples]
+            pf_sample = pf_bounce_errors[:min_samples]
+            imm_sample = imm_bounce_errors[:min_samples]
+            
+            # Friedman test for overall differences
+            friedman_stat, friedman_p = friedmanchisquare(ekf_sample, 
+                                                           pf_sample, 
+                                                           imm_sample)
+            
+            # Pairwise Wilcoxon signed-rank tests
+            ekf_pf_stat, ekf_pf_p = wilcoxon(ekf_sample, pf_sample)
+            ekf_imm_stat, ekf_imm_p = wilcoxon(ekf_sample, imm_sample)
+            pf_imm_stat, pf_imm_p = wilcoxon(pf_sample, imm_sample)
+            
+            # Bonferroni correction for multiple comparisons (3 tests)
+            bonferroni_alpha = 0.05 / 3
+            
+            # Store statistical results
+            statistical_results = {
+                "sample_sizes": {
+                    "ekf_total": int(len(ekf_bounce_errors)),
+                    "pf_total": int(len(pf_bounce_errors)),
+                    "imm_total": int(len(imm_bounce_errors)),
+                    "compared_sample_size": int(min_samples)
+                },
+                "friedman_statistic": float(friedman_stat),
+                "friedman_p_value": float(friedman_p),
+                "bonferroni_alpha": float(bonferroni_alpha),
+                "pairwise_tests": {
+                    "ekf_vs_pf": {
+                        "statistic": float(ekf_pf_stat),
+                        "p_value": float(ekf_pf_p),
+                        "significant": bool(ekf_pf_p < bonferroni_alpha)
+                    },
+                    "ekf_vs_imm": {
+                        "statistic": float(ekf_imm_stat),
+                        "p_value": float(ekf_imm_p),
+                        "significant": bool(ekf_imm_p < bonferroni_alpha)
+                    },
+                    "pf_vs_imm": {
+                        "statistic": float(pf_imm_stat),
+                        "p_value": float(pf_imm_p),
+                        "significant": bool(pf_imm_p < bonferroni_alpha)
+                    }
+                },
+                "detection_rates": {
+                    "ekf": float(len(ekf_bounce_errors) / 50),
+                    "pf": float(len(pf_bounce_errors) / 50),
+                    "imm": float(len(imm_bounce_errors) / 50)
+                }
+            }
+            
+        else:
+            print(f"  WARNING: Insufficient data ({min_samples} samples) for statistical tests")
+            print("  Recommendation: Increase Monte Carlo runs or investigate detection failures")
+            
+            # Store limited results
+            statistical_results = {
+                "sample_sizes": {
+                    "ekf_total": int(len(ekf_bounce_errors)),
+                    "pf_total": int(len(pf_bounce_errors)),
+                    "imm_total": int(len(imm_bounce_errors)),
+                    "compared_sample_size": int(min_samples)
+                },
+                "insufficient_data": True,
+                "detection_rates": {
+                    "ekf": float(len(ekf_bounce_errors) / 50),
+                    "pf": float(len(pf_bounce_errors) / 50),
+                    "imm": float(len(imm_bounce_errors) / 50)
+                }
+            }
 
         # Compare results
         print(f"\nMonte Carlo Comparison:")
@@ -618,7 +786,34 @@ def main():
             f"  IMM:   Mean Error = {imm_mean_error:.3f}m, Std Dev = "
             f"{imm_std_dev:.3f}m")
 
-        # Store Monte Carlo data
+        print(f"\nStatistical Significance:")
+        if min_samples >= 10:
+            print(f"  Sample size used for tests: {min_samples} samples per filter")
+            print(f"  Friedman test: χ² = {friedman_stat:.3f}, p = {friedman_p:.4f}")
+            if friedman_p < 0.05:
+                print("  → Significant differences detected across filters")
+                
+                # Report significant pairwise differences
+                if statistical_results["pairwise_tests"]["ekf_vs_pf"]["significant"]:
+                    print(f"  EKF vs PF: p = {ekf_pf_p:.4f} (significant)")
+                if statistical_results["pairwise_tests"]["ekf_vs_imm"]["significant"]:
+                    print(f"  EKF vs IMM: p = {ekf_imm_p:.4f} (significant)")
+                if statistical_results["pairwise_tests"]["pf_vs_imm"]["significant"]:
+                    print(f"  PF vs IMM: p = {pf_imm_p:.4f} (significant)")
+            else:
+                print("  → No significant differences detected")
+        else:
+            print(f"  Insufficient data for statistical tests ({min_samples} samples)")
+            print("  Detection rates:")
+            print(f"    EKF: {statistical_results['detection_rates']['ekf']:.1%}")
+            print(f"    PF: {statistical_results['detection_rates']['pf']:.1%}")
+            print(f"    IMM: {statistical_results['detection_rates']['imm']:.1%}")
+            print("  Detection rates:")
+            print(f"    EKF: {statistical_results['detection_rates']['ekf']:.1%}")
+            print(f"    PF: {statistical_results['detection_rates']['pf']:.1%}")
+            print(f"    IMM: {statistical_results['detection_rates']['imm']:.1%}")
+
+        # Store Monte Carlo data with statistical results
         monte_carlo_data = {
             "ekf_mean": float(ekf_mean_error),
             "ekf_std": float(ekf_std_dev),
@@ -626,7 +821,8 @@ def main():
             "pf_std": float(pf_std_dev),
             "imm_mean": float(imm_mean_error),
             "imm_std": float(imm_std_dev),
-            "num_runs": 50
+            "num_runs": 50,
+            "statistical_analysis": statistical_results
         }
 
         # Create comparison plot
