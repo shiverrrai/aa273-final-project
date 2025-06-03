@@ -1,0 +1,46 @@
+TENNIS BALL TRACKING SIMULATION REPORT
+==================================================
+
+Generated: 2025-06-02 22:22:38
+
+CONFIGURATION:
+  Camera Config: default
+  Measurement Factor: 1/2
+  Monte Carlo: Yes
+
+TRAJECTORY TRACKING PERFORMANCE:
+----------------------------------------
+EKF:
+  Mean Absolute Error: 0.247 m
+  Root Mean Square Error: 0.292 m
+  Maximum Error: 0.930 m
+  Final Error: 0.063 m
+  Impact Location Error: 0.165 m
+
+PF:
+  Mean Absolute Error: 0.256 m
+  Root Mean Square Error: 0.301 m
+  Maximum Error: 0.933 m
+  Final Error: 0.072 m
+  Impact Location Error: 0.203 m
+
+IMM:
+  Mean Absolute Error: 0.253 m
+  Root Mean Square Error: 0.297 m
+  Maximum Error: 0.923 m
+  Final Error: 0.060 m
+  Impact Location Error: 0.184 m
+
+MONTE CARLO ANALYSIS:
+----------------------------------------
+EKF Bounce Error: 0.276 ± 0.174 m
+PF Bounce Error: 0.299 ± 0.138 m
+IMM Bounce Error: 0.244 ± 0.165 m
+
+STATISTICAL SIGNIFICANCE ANALYSIS:
+----------------------------------------
+Detection Rates:
+EKF: 100.0% (50/50)
+PF: 100.0% (50/50)
+IMM: 78.0% (39/50)
+

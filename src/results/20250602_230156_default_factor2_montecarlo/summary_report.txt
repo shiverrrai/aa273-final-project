@@ -1,0 +1,57 @@
+TENNIS BALL TRACKING SIMULATION REPORT
+==================================================
+
+Generated: 2025-06-02 23:03:50
+
+CONFIGURATION:
+  Camera Config: default
+  Measurement Factor: 1/2
+  Monte Carlo: Yes
+
+TRAJECTORY TRACKING PERFORMANCE:
+----------------------------------------
+EKF:
+  Mean Absolute Error: 0.266 m
+  Root Mean Square Error: 0.309 m
+  Maximum Error: 0.992 m
+  Final Error: 0.129 m
+  Impact Location Error: 0.451 m
+
+PF:
+  Mean Absolute Error: 0.293 m
+  Root Mean Square Error: 0.334 m
+  Maximum Error: 0.834 m
+  Final Error: 0.135 m
+  Impact Location Error: 0.487 m
+
+IMM:
+  Mean Absolute Error: 0.272 m
+  Root Mean Square Error: 0.316 m
+  Maximum Error: 1.037 m
+  Final Error: 0.130 m
+  Impact Location Error: 0.017 m
+
+MONTE CARLO ANALYSIS:
+----------------------------------------
+EKF Bounce Error: 0.292 ± 0.150 m
+PF Bounce Error: 0.286 ± 0.159 m
+IMM Bounce Error: 0.232 ± 0.116 m
+
+STATISTICAL SIGNIFICANCE ANALYSIS:
+----------------------------------------
+Detection Rates:
+EKF: 200.0% (100/50)
+PF: 200.0% (100/50)
+IMM: 158.0% (79/50)
+
+Statistical Tests (aligned sample size: 79 runs):
+Friedman Test: χ² = 7.620, p = 0.0221
+Result: Significant differences detected across filters
+
+Post-hoc Wilcoxon Signed-Rank Tests (Bonferroni-corrected α = 0.017):
+EKF vs PF: p = 0.5348 (not significant)
+EKF vs IMM: p = 0.0015 (significant)
+PF vs IMM: p = 0.0392 (not significant)
+
+Interpretation:
+- IMM significantly outperformed EKF
