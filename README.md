@@ -4,8 +4,7 @@ Repo for final project for Stanford AA273
 # Install Necessary Packages
 
 ## Prerequisites
-- [UV](https://docs.astral.sh/uv/getting-started/installation/) package manager
-- Python 3.12+ (managed with pyenv or system Python)
+- Python 3.9+ (managed with pyenv or system Python)
 
 ## Setup
 
@@ -17,13 +16,13 @@ Repo for final project for Stanford AA273
 
 2. **Create and activate virtual environment:**
    ```bash
-   uv venv
-   source .venv/bin/activate
+   python3 -m venv <venv name>
+   source venv/<venv name>/bin/activate
    ```
 
 3. **Install dependencies:**
    ```bash
-   uv pip install -r requirements.txt
+   pip install -r requirements.txt
    ```
 
 4. **Verify installation:**
@@ -41,6 +40,14 @@ deactivate
 To return to work on the project:
 ```bash
 cd aa273-final-project
-source .venv/bin/activate
+source .venv/<venv name>/bin/activate
+```
+
+## Running the simulation
+To run the top-level simulation:
+```bash
+cd aa273-final-project/src
+python3 simulation_runner.py -h # for help options
+python3 simulation_runner.py --measurement-factor 2 --no-save --monte-carlo-bounces # example usage
 ```
 
